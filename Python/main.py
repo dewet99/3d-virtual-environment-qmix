@@ -7,15 +7,7 @@ from components.testing_executor import TestExecutor
 from components.learner import Learner
 import yaml
 
-import traceback
-import tracemalloc
-import os
-import time
 import sys
-
-os.environ['RAY_GRAFANA_HOST'] = 'localhost:3000'
-os.environ['RAY_PROMETHEUS_HOST'] = 'localhost:9090'
-os.environ['RAY_GRAFANA_IFRAME_HOST'] = 'localhost:3000'
 
 ray.init()
 
@@ -40,7 +32,7 @@ def main(arg):
     else:
         config[arg] = False
     
-    if arg != "test":
+    if arg == "train":
         workers = [Executor.remote(config, i) for i in range (config["num_executors"])]
         config_ref = workers[0].retrieve_updated_config.remote()
         config = ray.get(config_ref)
@@ -80,10 +72,13 @@ def main(arg):
 
         ray.timeline(filename="timeline.json")
         sys.exit(1)
-    else:
+    elif arg == "test":
         worker = TestExecutor(config, 0)
 
         worker.run()
+        sys.exit(1)
+    else:
+        print ("No argument specified, exiting")
         sys.exit(1)
 
 

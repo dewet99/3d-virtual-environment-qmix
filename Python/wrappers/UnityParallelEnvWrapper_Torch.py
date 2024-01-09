@@ -17,16 +17,6 @@ import uuid
 from mlagents_envs.side_channel.environment_parameters_channel import EnvironmentParametersChannel
 from mlagents_envs.base_env import DecisionSteps, TerminalSteps
 import numpy as np
-import copy
-
-import pdb
-import time
-
-
-# Generating a bunch of pics:
-from PIL import Image
-import random
-import time
 
 
 
@@ -37,38 +27,17 @@ class UnityWrapper:
         self,
         # file_name: string,
         environment: UnityEnvironment,
-        side_channels,
-        return_state_info: bool = False,
-        env_preprocess_wrappers: Optional[List] = None,
-        # encoder: str = None,
-        curriculum_steps: list = None,
-        use_curriculum_learning: bool = False,
         episode_limit: int = 1500,
         config = None
         ):
         super(UnityWrapper, self).__init__()
         self._environment = environment
-        self._reset_next_step = False
-        self._return_state_info = return_state_info
-        self.previous_obs = {}
-
-        self._use_curriculum_learning = use_curriculum_learning
-        self._curriculum_steps = curriculum_steps
-        self._current_curriculum_id = 0
-        self._side_channels = side_channels
-
-        self.agent0obs = []
-        self.agent1obs = []
-        self.a0 = 0
-        self.a1 = 1
-        self.starttime = time.time()-40
-        self.generate_gifs = False
         
 
         if config is not None:
             self.config = config
-        # Unity specs are tied to behaviour names, so first get behaviour name and from that, the spec. This code assumes all agents have the same behaviour
-        # Reset the original enironment, to generate the behaviour specs and names
+
+
         self._environment.reset()
         self._behaviour_name = list(self._environment.behavior_specs)[0]
         self._behaviour_specs = self._environment.behavior_specs[self._behaviour_name]
@@ -76,69 +45,29 @@ class UnityWrapper:
         self.step_count = 0
         self.all_agents_byname = self.possible_agents
 
-        if self._behaviour_specs.action_spec.discrete_size>1:
-            self._action_space = "MultiDiscrete" 
-            raise NotImplementedError
-        else:
-            self._action_space = "Discrete"
-            self.continuous_action = None
-                
-
-        # Temporary position for this
-        self.all_agents_byname = self.possible_agents
-        # This has the format of a list with contents ['agent_0', 'agent_1', ..., 'agent_n']
-        
-        # PYMARL requirements:
+        # Used during generation of ActionTuple for UnityEnv
+        self._action_space = "Discrete"
+        self.continuous_action = None
         self.episode_limit = episode_limit
-        # Set some pymarl required stuff:
+
         if not self.config["grayscale"]:
             self.obs_shape = self._behaviour_specs.observation_specs[0].shape
         else:
             self.obs_shape = (self._behaviour_specs.observation_specs[0].shape[0], self._behaviour_specs.observation_specs[0].shape[1], 1)
+            # Grayscale coefficients obtained from dubious Google Search
             self.grayscale_coefficients = np.array([0.299, 0.587, 0.114])
+
+        # Set the legal actions masks, for later use
         self._action_mask = None
-        # Set the legal actions masks
-
-
-        
-
-
-
-    def _get_curriculum_steps(self):
-        return self._curriculum_steps
-        
-    def _get_current_curriculum_id(self):
-        return self._current_curriculum_id
-    
-    def _increment_curriculum_id(self):
-        self._current_curriculum_id+=1
-
-    def use_curriculum_learning(self):
-        return self._use_curriculum_learning
-    
-    def _send_to_environment(self, parameter):
-        self._side_channels[2].set_float_parameter("curriculum_id", parameter)
-    
-    # def _increase_environment_curriculum(self):s
 
 
     def reset(self):
         """
         Resets the episode
         """
-
-        # print("Start execute reset")
-
-        self._reset_next_step = False
-        # # self._step_type = dm_env.StepType.FIRST
-        # self._step_type = "FIRST"
-
-        # Reset the unity environment
         self._environment.reset()
         self.step_count = 0
 
-        # Use the same decision_steps variable for ALL methods, because the unity environment keeps stepping separately, so repeated calls of the get_steps method
-        # will likely lead to extremely unstable training
         self.decision_steps, self.terminal_steps = self._environment.get_steps(self._behaviour_name)
         
         # Have to set this property here, because if called elsewhere, decisionsteps might not have all agents in
@@ -158,11 +87,6 @@ class UnityWrapper:
             env_info
         """
 
-
-        # set decisionsteps so convert_set_actions works with the latest information 
-        # self.decision_steps, self.terminal_steps = self._environment.get_steps(self._behaviour_name)
-        # legal_actions = self.get_avail_actions()
-        # print(f"Actions taken: {actions}")
         if actions is not None:
             self._convert_set_actions(actions)
 
@@ -172,21 +96,15 @@ class UnityWrapper:
         # Get the new decisionsteps
         self.decision_steps, self.terminal_steps = self._environment.get_steps(self._behaviour_name)
 
-        # observation, extras = self._get_observations_dict()
-        # observation, extras = self._get_observations_list()
-        # observation["legal_actions"] = legal_actions
-
-
-        # Rewards:
         # Get the reward from the Unity Environment and convert it to the correct format
-        # Correct format for rewards is again in the form Dict[agent_id: reward]
-        rewards_pc, dones = self._get_rewards_dones()
+        rewards_pc, done = self._get_rewards_dones()
 
-        env_info = self.get_env_info()
+
+        env_info = self.get_episode_end_reached()
         self.step_count +=1
         
 
-        return rewards_pc, dones, env_info
+        return rewards_pc, done, env_info
 
     def get_steps(self):
         return self._environment.get_steps(self._behaviour_name)
@@ -194,24 +112,22 @@ class UnityWrapper:
     def _get_observations(self):
         
         """
-        Gets an array of observations in shape (n, 84, 84, 3) where n is number of agents
+        Gets an array of observations in shape (n, w, h, c) where:
+            n - number of agents in the environments
+            w - width of the observation in pixels
+            h - height of the observation in pixels
+            c - number of channels - default is 3
+
         Will always contain the latest observations; from decision steps if the episode has not terminated
         or from terminal steps if the episode has terminated
         """
-        # self.decision_steps, self.terminal_steps = self.get_steps()
         if self.env_done(self.terminal_steps):
             steps_to_use = self.terminal_steps
-            # steps_to_use = ts
-            # print(f"using teminal at step: {self.step_count}")
         else:
             steps_to_use = self.decision_steps
-            # steps_to_use = ds
-            # print(f"using decision at step: {self.step_count}")
         
         if self.config["grayscale"]:
             return self.convert_to_grayscale(steps_to_use.obs[0])
-
-
 
         return steps_to_use.obs[0]
     
@@ -221,7 +137,9 @@ class UnityWrapper:
     
     def _get_global_state_variables(self):
         """
-        Gets the observations from the agents that make up part of the global state. This requires the environment itself to be setup to return those values
+        Gets the observations from the agents that make up part of the global state. This requires the environment itself to be setup to return those values.
+        All environments used has the information available, but the information can be omitted during training if you wish to use e.g a concatenated version of
+        the agents' observations as the global state. Some sort of global state is required ny the QMIX algorithm, though.
         """
 
         if self.env_done(self.terminal_steps):
@@ -234,7 +152,7 @@ class UnityWrapper:
         for i,agent in enumerate(self.all_agents_byname):
             # The (2,8) below is hardcoded because there's no way to dynamically determine which part of the vector obs is agent specific and which part is global
             # To be precise: Each agent contains its own position and rotation, as well as the positions of all important world objects
-            # The latter is considered global and should be added to the state only once, the rest are local and should be added to the state for each agent in the system
+            # The latter is considered global and should be added to the state only once, the rest are agent-specific and should be added to the state for each agent in the system
             for j in range (2,8):
                 global_state.append(steps_to_use[i].obs[1][j])
         
@@ -250,9 +168,6 @@ class UnityWrapper:
         return state
 
 
-
-
-
     def _convert_set_actions(self, actions):
         """
         Takes in a tensor or array of shape (n_agents, 1) for discrete action space
@@ -263,8 +178,6 @@ class UnityWrapper:
 
         unity_action = ActionTuple()
         if isinstance(actions, th.Tensor):
-            # actions = np.array([int(a) for a in actions])
-            # actions = np.reshape(actions, newshape = self._behaviour_specs.action_spec.empty_action(self.get_num_agents()).discrete.shape)
             actions = actions.detach().cpu().numpy().reshape(-1,1)
         
         unity_action.add_discrete(actions)
@@ -280,15 +193,13 @@ class UnityWrapper:
             steps_to_use = self.decision_steps
             terminal = False
 
-        # Get agent id-index map:
-
+        # Get agent id-index map. Not strictly necessary but always best to make sure
         agents = steps_to_use.agent_id_to_index
 
         # Loop through all agents and accumulate reward
         reward = 0
-        for agent_id, agent_index in enumerate(agents):
+        for _, agent_index in enumerate(agents):
             reward+= steps_to_use[agent_index].reward
-            # print(f"{agent_id} reward: {steps_to_use[agent_index].reward}")
 
         # We want the group reward to be the mean over all agent rewards, so just divide the total reward by the number of agents.
         reward /= self.get_num_agents()
@@ -565,8 +476,6 @@ class UnityWrapper:
         """
         PYMARL uses this to help setup replay buffers
         """
-        # I could probably lose the methods and directly get the stuff here, but it's clearner
-        # this way if I want to change eg the num_actions stuff later
         obs_shape = self.get_obs_spec()
         n_actions = self.get_num_actions()
         n_agents = self.get_num_agents()
@@ -577,10 +486,12 @@ class UnityWrapper:
         env_info["n_agents"] = n_agents
         env_info["episode_limit"] = self.episode_limit
 
-        # Use only if extra state info is available from the environment
+        # Use only if extra state info is available from the environment - it is by default, but you can choose to not use this information during training
+        # This is effectively hard-coded based on mechanics coded into the environments
+        # Do not try to change this, as I do not give access to the code for the environments
         if self._behaviour_specs.observation_specs[1].shape[-1]>2:
-            # The -2 is because the first 2 values are not part of the global state, the +6 is beacuse each agent's position and rotation is represented by 6 flaots,
-            # and we have two agents, and only the first ones' values are included by default
+            # The -2 is because the first 2 values are not part of the global state, the +6 is beacuse each agent's position and rotation is represented by
+            # 6 floats, and we have two agents, and only the first ones' values are included by default
             
             state_size_to_add = (len(self.possible_agents)-1)*6 # value is 6
 
@@ -590,23 +501,21 @@ class UnityWrapper:
 
         return env_info
     
-    def get_env_info(self):
+    def get_episode_end_reached(self):
         env_info = {}
         if self.step_count == self.episode_limit:
             env_info["episode_limit"] = True
-        # print(f"step count: {self.step_count}")
-        # print(f"ep_limit: {self.episode_limit}")
         return env_info
 
     @property
     def possible_agents(self)->List:
         """All possible agents in env."""
-        # print("Start execute possible_agents")
+
         decision_steps, _ = self._environment.get_steps(self._behaviour_name)
         agents = []
-        # for i in range(len(decision_steps)):
+
         for i in decision_steps.agent_id:
-            # agents.append(i)
             agents.append(f"agent_{i}")
+
         return agents
                 

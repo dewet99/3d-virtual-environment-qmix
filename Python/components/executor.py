@@ -20,9 +20,6 @@ import torch.nn as nn
 import time
 
 import traceback
-import tracemalloc
-from memory_profiler import profile
-import os
 import datetime
 import sys
 import subprocess
@@ -42,7 +39,8 @@ class Executor(object):
         self.config = config
         self.batch_size = config["batch_size_run"]
 
-        # self.device = torch.device("cuda")
+
+        # The executor processes should always run on CPU, to save GPU resources for training
         self.device = torch.device("cpu")
         self.worker_id = worker_id
 
@@ -60,7 +58,7 @@ class Executor(object):
         # unity_env = UnityEnvironment(file_name='./unity/envs/Discrete_NoCur/Discrete_NoCur.x86_64', worker_id=get_worker_id())
         unity_env.reset()
 
-        self.env = UnityWrapper(unity_env, config_channel, episode_limit=self.episode_limit, config = self.config)
+        self.env = UnityWrapper(unity_env, episode_limit=self.episode_limit, config = self.config)
         self.env.reset()
 
         self.get_env_info()
