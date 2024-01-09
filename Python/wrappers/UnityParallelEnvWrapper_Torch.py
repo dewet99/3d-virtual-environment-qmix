@@ -170,7 +170,7 @@ class UnityWrapper:
 
     def _convert_set_actions(self, actions):
         """
-        Takes in a tensor or array of shape (n_agents, 1) for discrete action space
+        Takes in a tensor of shape (n_agents, 1) for discrete action space
         """
 
         if self.continuous_action == None:
@@ -204,8 +204,6 @@ class UnityWrapper:
         # We want the group reward to be the mean over all agent rewards, so just divide the total reward by the number of agents.
         reward /= self.get_num_agents()
 
-
-
         return reward, terminal
 
 
@@ -215,123 +213,10 @@ class UnityWrapper:
         else:
             return False
 
-
-
-    # def discount_spec(self) -> Dict[str, specs.BoundedArray]:
-    #     """Discount spec.
-    #     Returns:
-    #         Dict[str, specs.BoundedArray]: spec for discounts.
-    #     """
-    #     # print("Start execute discount_spec")
-    #     discount_specs = {}
-    #     for agent in self.all_agents_byname:
-    #         discount_specs[agent] = specs.BoundedArray(
-    #             (), np.float32, minimum=0.0, maximum=1.0
-    #         )
-    #     return discount_specs
-
-    # def reward_spec(self) -> Dict[str, specs.Array]:
-    #     """Reward spec.
-    #     Returns:
-    #         Dict[str, specs.Array]: spec for rewards.
-    #     """
-    #     # print("Start execute reward_spec")
-    #     reward_specs = {}
-    #     for agent in self.all_agents_byname:
-    #         reward_specs[agent] = specs.Array((), dtype=np.float32)
-
-    #     # print(f"Return reward spec:{reward_specs}")
-    #     return reward_specs
-
-    # def action_spec(self) -> Dict[str, Union[specs.DiscreteArray, specs.BoundedArray]]:
-    #     """
-    #     Action spec.
-
-    #     Returns Dict[agent_id: np.ndarray] 
-    #     """
-    #     # print("Start execute action_spec")
-
-    #     if self._action_space == "MultiDiscrete":
-    #         nvec = np.zeros(self._behaviour_specs.action_spec.discrete_size)
-
-    #         for i in range(self._behaviour_specs.action_spec.discrete_size):
-    #             # This generates the nvec array, which contains the number of possible actions for each branch
-    #             nvec[i] = self._behaviour_specs.action_spec.discrete_branches[i]
-
-    #         maximum = nvec-1
-    #         minimum = np.zeros(self._behaviour_specs.action_spec.discrete_size)
-
-    #         # Will have to change the dtype to int, after changing MADQN for multidiscrete envs
-    #         actions = specs.BoundedArray(
-    #             shape= nvec.shape,
-    #             dtype = np.int64,
-    #             minimum=minimum,
-    #             maximum=maximum,
-    #             name=self._behaviour_name,
-    #         )
-
-    #     else:
-    #         # print(f"Num values = {self._behaviour_specs.action_spec[1]}")
-    #         actions = specs.DiscreteArray(
-    #             num_values=self._behaviour_specs.action_spec[1][0],
-    #             dtype = np.int64,
-
-    #         )
-
-    #     # ['agent_0', 'agent_1' ... etc]
-    #     agents = self.all_agents_byname
-        
-    #     action_specs = {}
-    #     for agent_id in agents:
-    #         action_specs[agent_id] = actions
-
-    #     return action_specs
-
-    # def observation_spec(self) -> Dict[str, types.OLT]:
-    #     """
-    #     Only for visual observations at the moment
-    #     If we use an encoder, the observation spec depends on the output shape of the encoder, not the actual visual observations
-    #     """
-    #     # print("Start execute obs_spec")
-    #     observation_specs = {}
-    #     agents = self.all_agents_byname #Max number of possible agents
-    #     agents = dict.fromkeys(agents)
-
-    #     # Gotta set the legal actions here, based on the length 3 vector observation which tells you whether or not the agent is looking at a portal/surface
-    #     # Index 0 says whether or not the agent should be able to place portal 0, index 1 says the same for portal 1, and index 2 says whether the agent should
-    #     # be able to attempt to remove a portal Therefore create a binary mask that looks likme [1 _ _ _] where the thre underscores are the contents of 
-    #     # the obs[1] vector
-        
-    #     # legal_actions = self.action_spec()
-    #     legal_actions = self.get_avail_actions()
-
-    #     for agent in agents:
-    #         obs = specs.BoundedArray(
-    #             # self._behaviour_specs.observation_specs[0].shape instead of using agent as indicing because the agents have the same
-    #             # observation spec
-    #             shape = self._behaviour_specs.observation_specs[0].shape,
-    #             # dtype = np.int64,
-    #             dtype = np.float32,
-    #             minimum= np.zeros(self._behaviour_specs.observation_specs[0].shape),
-    #             maximum = np.ones(self._behaviour_specs.observation_specs[0].shape),
-    #             name=self._behaviour_name
-    #         )
-
-    #         observation_specs[agent] = types.OLT(
-    #             observation=obs,
-    #             legal_actions=legal_actions[agent],
-    #             terminal = specs.Array((1,), np.float32)
-    #         )
-
-    #     return observation_specs
-
-    def get_avail_actions(self):
-        # ds, ts = self._environment.get_steps(self._behaviour_name)
-
-        # Check whether to use terminal or decision steps. Use decision steps for legal action
-        # masking for all steps except if env is done, then use terminal steps
-        # decision_steps, terminal_steps = self.get_steps()
-
+    def get_avail_actions(self) -> list:
+        """
+        Get the available/legal actions as a list of one-hot arrays.
+        """
         if self.env_done(self.terminal_steps):
             steps_to_use = self.terminal_steps
         else:
@@ -341,20 +226,15 @@ class UnityWrapper:
         for i,agent in enumerate(self.all_agents_byname):
             # The first action should always be legal, as it is the action of "No action"
             legal_actions_list = [1]
-            # obs[1] contains the length 2 vector that says whether those two actions are legal
-            # NOTE: The below commented is deprecated because we use more obs[1] stuff as part of the global state, so we cant loop over everything for the legal mask
-            # for action in steps_to_use[i].obs[1]:
-            #     legal_actions_list.append(np.int32(action))
 
             for j in range(2):
                 legal_actions_list.append(np.int32(steps_to_use[i].obs[1][j]))
 
             # The above legal action masking step only masks the first 3 actions, i.e
-            # portal placement and no op. Branch 1 in the multidiscrete space.
-            # Also add masking for all other actions, but make them always true
+            # portal placement and no op.
+            # Also add masking for all other actions, but make them always true since they are the movement and rotation actions
             if self._action_space == "Discrete":
-                # self.action_mask contains a list of all 1's to mask all actions that are
-                # always legal
+                # self.action_mask contains a list of all 1's to mask all actions that are always legal.
                 if not self._action_mask:
                     length = self.get_num_actions() - len(legal_actions_list)
                     self._action_mask = [1] * length
@@ -366,105 +246,23 @@ class UnityWrapper:
 
             legal_actions.append(np.array(fully_masked_actions))
 
-        # print(f"The set of legal actions for this step is: {legal_actions}")
         return legal_actions
-
-
-    # def extra_spec(self) -> Dict[str, specs.BoundedArray]:
-    #     """
-    #     extra_spec contains, for now, just the global state spec. 
-        
-    #     """
-
-    #     # print("Start execute extra_spec")
-    #     # This is the shape of one observation. I want two, concatenated side by side
-    #     shape = self._behaviour_specs.observation_specs[0].shape
-        
-    #     # Generate an empty array with the shapoe of one observation, and then concatenate it to itself to be able to obtain the shape of
-    #     # two concatenated observations.
-    #     # Shape then contains the shape of two side-by-side observations, in this case (84, 168, 3). Tis is so wrtong tho. Make it (2,84,84,3) rather
-    #     a = np.zeros(shape)
-    #     # b = np.concatenate((a,a), axis = 1)
-    #     b = np.stack((a,a), axis = 0)
-    #     b = b.flatten()
-    #     shape = b.shape
-
-    #     if self._return_state_info:
-    #         return {"s_t": specs.BoundedArray(
-    #             shape = shape,
-    #             dtype = np.float32,
-    #             minimum = np.zeros(shape),
-    #             maximum = np.ones(shape),
-    #         )}
-    #     else:
-    #         return {}
-    #         # Get each agent's observation, convert it to a single boundedarray
-
-    #     # return {}
-
-    # def savegif(self):
-    #     if time.time() - self.starttime > 60:
-    #         self.starttime = time.time()
-            
-    #         # agent0obs = self.convert_stacks_to_list(self.agent0obs)
-    #         # agent1obs = self.convert_stacks_to_list(self.agent1obs)
-
-    #         agent0obs = self.agent0obs
-    #         agent1obs = self.agent1obs
-
-    #         agent0obs_int = [np.uint8(x*256) for x in agent0obs]
-    #         agent1obs_int = [np.uint8(x*256) for x in agent1obs]
-
-
-    #         clip0 = ImageSequenceClip(agent0obs_int, fps = 5)
-    #         clip1 = ImageSequenceClip(agent1obs_int, fps = 5)
-
-    #         clip0.write_gif(f"./gifs/agent_0_segment_{self.a0}.gif", fps = 5)
-    #         clip1.write_gif(f"./gifs/agent_1_segment_{self.a1}.gif", fps = 5)
-    #         self.a0+=1
-    #         self.a1+=1
-
-    #         self.agent0obs.clear()
-    #         self.agent1obs.clear()
-    #         # del agent0obs
-    #         # del agent1obs
-    #         print("Wrote gifs for agents")
-
-    def convert_stacks_to_list(self, list_of_stacked_obs_to_convert):
-        # This only works for grayscale observations
-        # Get the number of stacked observations:
-        print(f"obs shape: {list_of_stacked_obs_to_convert[0].shape}")
-        num_stacked_obs = list_of_stacked_obs_to_convert[0].shape[2] #eg 84,84,4 -> 4 stacked obs
-
-        flattened = []
-        for stacked_obs in list_of_stacked_obs_to_convert:
-            for i in range(num_stacked_obs):
-                sobs = stacked_obs[:,:,i]
-                flattened.append(np.expand_dims(sobs, axis = -1))
-
-        return flattened
     
     def get_obs_spec(self):
         """
         Get the shape of observations that the agents return
         """
-        
         return self.obs_shape
     
     def get_num_actions(self):
         """
-        Return the number of actions in the environment
+        Return the number of discrete actions in the environment
         Cases:
-            MultiDiscrete:
-                NotImplementedYet
             Discrete:
                 Returns a single value
         """
-        if self._action_space == "MultiDiscrete":
-            raise NotImplementedError
-        
-        else:
-            return self._behaviour_specs.action_spec[1][0]
+
+        return self._behaviour_specs.action_spec[1][0]
     
     def get_num_agents(self):
         """
