@@ -15,7 +15,7 @@ from components.replay_buffer import EpisodeBatch
 import pdb
 import traceback
 import tracemalloc
-from memory_profiler import profile
+
 import os
 from models.NatureVisualEncoder import NatureVisualEncoder
 import yaml
