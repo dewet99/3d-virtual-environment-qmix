@@ -1,0 +1,1 @@
+For this method, the only important params are:recurrent length: 96burnin lengthj: 32reward standardisation: TrueValue function scaling: True
