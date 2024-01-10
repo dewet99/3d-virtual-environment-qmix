@@ -15,14 +15,14 @@ The work represented here was done for my MEng thesis. It consists of an environ
 This project implements the QMIX Multi Agent Reinforcement Learning algorithm in a 3D virtual environment. The algorithm is augmented with a number of features to improve its performance in the 3D environment.
 
 ## Features
-The main features we implemented are as follows. These features aren't particularly groundbreaking, but they have not been really been combined to see how well they work together in a multi-agent RL context.
+The main features we implemented are as follows. These features aren't particularly groundbreaking, but they have not really been combined to see how well they work together in a multi-agent RL context.
 - QMIX
 - Distributed RL using Ray, splitting the RL loop into multiple executors and a learner process
 - Recurrent burn-in
 - Stored recurrent hidden state
-- n-step Returns
-- Prioritised Experience Replay
-- Reward Standardisation
+- n-step returns
+- Prioritised experience replay
+- Reward standardisation
 - Noisy neural networks for exploration
 
 ## Environments
@@ -32,6 +32,7 @@ We include the following environments and perform various experiments in them. N
 - experiment_4_full_action_space_pre_train
 - experiment_4_full_action_space
 - experiment_5_cooperative
+
 For each of the above environments, there is also a corresponding test environment. These environments end with "_test". Functionally, they are exactly the same, except that the test environments allow you to see the environment, both from a top-down perspective and from each agent's perspective. You can open a test environment by navigating to its respective .x86_64 file. Linux only.
 
 ### Environment Controls
