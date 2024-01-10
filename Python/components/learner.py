@@ -35,7 +35,6 @@ class Learner(object):
         self.encoder = NatureVisualEncoder(self.config["obs_shape"][0],
                                            self.config["obs_shape"][1],
                                            self.config["obs_shape"][2],
-                                           self.config["encoder_output_size"],
                                            self.config,
                                            device=self.device
                                            )
@@ -59,22 +58,12 @@ class Learner(object):
 
         self.parameter_server_encoder_list = list(self.encoder.state_dict())
 
-        # self.scaler = torch.cuda.amp.GradScaler()
-
-        # if self.config["load_pretrained_model"]:
-        #     try:
-        #         cwd = os.getcwd()
-        #         pd = os.path.dirname(cwd)
-        #         encoders = pd + "/DISTRIBUTED/encoder_weights/encoder_NEW.pth"               
-        #         self.mac.agent.feature_extractor.load_state_dict(torch.load(encoders))
-        #     except Exception as e:
-        #         traceback.print_exc()
         self.trainable_parameters = nn.ParameterList(self.mac.agent.parameters())
 
         self.trainable_parameters+=nn.ParameterList(self.encoder.parameters())
             
 
-        self.beta = self.config["beta"]
+        # self.beta = self.config["beta"]
 
 
         # Parameter server stuff
@@ -264,8 +253,8 @@ class Learner(object):
 
                 if log_this_step:
                     self.log_stats(log_dict)
-                    if self.config["log_histograms"]:
-                        self.parameter_server.log_parameter_server_params.remote()
+                    # if self.config["log_histograms"]:
+                    #     self.parameter_server.log_parameter_server_params.remote()
             sys.exit(1)
 
         except Exception as e:
@@ -330,7 +319,7 @@ class Learner(object):
         self.writer.add_scalar("Reward_Stats/mean_ep_length", mean_ep_length, trainer_steps)
         self.writer.add_scalar("Time_Stats/mean_ep_length_vs_time", mean_ep_length, int((self.training_start_time-time.time())/60))
         if mean_icm_reward is not None:
-            self.writer.add_scalar("Reward_Stats/mean_icm_reward", self.config["icm_weight"]*mean_icm_reward, trainer_steps)
+            self.writer.add_scalar("Reward_Stats/mean_icm_reward", mean_icm_reward, trainer_steps)
         self.writer.add_scalar("Time_Stats/mean_episode_duration", mean_ep_duration, trainer_steps)
 
         # log worker steps
@@ -568,25 +557,24 @@ class Learner(object):
             else:
                 rewards_normed = rewards
 
-            if self.config["reward_clipping"]:
-                # assert self.config["value_fn_rescaling"] == False, "Cannot clip rewards when you are also rescaling the value function"
-                torch.clamp_(rewards_normed, max = self.config["reward_clip_max"], min=self.config["reward_clip_min"])
+            
+            # assert self.config["value_fn_rescaling"] == False, "Cannot clip rewards when you are also rescaling the value function"
+            torch.clamp_(rewards_normed, max = self.config["reward_clip_max"], min=self.config["reward_clip_min"])
 
-                rewards_total = rewards_normed
+            rewards_total = rewards_normed
 
-                # If extra state information is available:
-                state = torch.cat([avail_actions.reshape([B,T,-1]), batch_state], dim=-1).cuda()
-                # target_state = torch.cat([target_state, batch_state], dim=-1)
+            # If extra state information is available:
+            state = torch.cat([avail_actions.reshape([B,T,-1]), batch_state], dim=-1).cuda()
+            # target_state = torch.cat([target_state, batch_state], dim=-1)
 
-                # with torch.cuda.amp.autocast():
-                chosen_action_qvals = self.mixer(chosen_action_qvals.to(torch.float32), state[:, :-1])
-                target_max_qvals = self.target_mixer(target_max_qvals.to(torch.float32), state[:, 1:])
+            # with torch.cuda.amp.autocast():
+            chosen_action_qvals = self.mixer(chosen_action_qvals.to(torch.float32), state[:, :-1])
+            target_max_qvals = self.target_mixer(target_max_qvals.to(torch.float32), state[:, 1:])
 
-                # do scaling on target_max_qvals here
-                if self.config["value_fn_rescaling"]:
-                    target_max_qvals = signed_parabolic(target_max_qvals)
-            else:
-                raise NotImplementedError
+            # do scaling on target_max_qvals here
+            if self.config["value_fn_rescaling"]:
+                target_max_qvals = signed_parabolic(target_max_qvals)
+            
     
             # Calculate 1-step Q-Learning targets - can also do n-step, but will have to implement that
             if self.config["n_step_return"]:

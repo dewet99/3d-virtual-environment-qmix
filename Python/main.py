@@ -11,28 +11,21 @@ import sys
 
 ray.init()
 
-def main(arg):
+def main(args):
+    """
+    args:
+        0: main.py
+        1: test/train
+        2: config file name
+    """
 
+    default_cfg = "./config/default.yaml"
 
-    file1 = "./config/default.yaml"
-    file2 = "./config/visual_qmix.yaml"
-    config = merge_yaml_files(file1, file2)
-
-    # parsing args for ablation study
-    if arg == "all_inc":
-        pass
-    elif arg == "num_executors":
-        config[arg] = 1
-    elif arg == "none_inc":
-        config["num_executors"] = 1
-        config["use_burnin"] = False
-        config["n_step_return"] = False
-        config["standardise_rewards"] = False
-        config["use_per"] = False
-    else:
-        config[arg] = False
+    file2 = f"./config/{args[2]}.yaml"
     
-    if arg == "train":
+    config = merge_yaml_files(default_cfg, file2)
+    
+    if args[1] == "train":
         workers = [Executor.remote(config, i) for i in range (config["num_executors"])]
         config_ref = workers[0].retrieve_updated_config.remote()
         config = ray.get(config_ref)
@@ -72,7 +65,7 @@ def main(arg):
 
         ray.timeline(filename="timeline.json")
         sys.exit(1)
-    elif arg == "test":
+    elif args[1] == "test":
         worker = TestExecutor(config, 0)
 
         worker.run()
@@ -86,8 +79,6 @@ def main(arg):
 
 
 if __name__ == "__main__":
-    arg = sys.argv
-    print(f"arg is: {arg[1]}")
-    # print("Currently using argument: {}")
-    main(arg[1])
+    args = sys.argv
+    main(args)
 

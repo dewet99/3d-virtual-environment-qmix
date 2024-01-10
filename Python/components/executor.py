@@ -65,9 +65,6 @@ class Executor(object):
         self.setup()
         self.setup_logger()
 
-        # self.mac.agent.fc2.eval()
-        # self.mac.agent.feature_extractor.eval()
-
 
     def collect_experience(self):
         # print(f"Executor {self.worker_id} starting to collect experience")
@@ -212,12 +209,12 @@ class Executor(object):
                     self.sync_with_param_server_encoder()
 
 
-                if pupdates % self.config["log_every"] == 0 and pupdates>0 and self.config["log_histograms"]:
-                    for key, value in self.mac.named_parameters():
-                        self.histograms_writer.add_histogram(f"Executor_Histograms/{key}", value, ray.get(self.parameter_server.return_environment_steps.remote()))
+                # if pupdates % self.config["log_every"] == 0 and pupdates>0 and self.config["log_histograms"]:
+                #     for key, value in self.mac.named_parameters():
+                #         self.histograms_writer.add_histogram(f"Executor_Histograms/{key}", value, ray.get(self.parameter_server.return_environment_steps.remote()))
 
 
-                    # print(f"Worker {self.worker_id} is synced with parameter server")
+                #     # print(f"Worker {self.worker_id} is synced with parameter server")
 
                 # print(f" Worker {self.worker_id} will now start to collect one experience")
 
@@ -268,7 +265,6 @@ class Executor(object):
         self.encoder = NatureVisualEncoder(self.config["obs_shape"][0],
                                            self.config["obs_shape"][1],
                                            self.config["obs_shape"][2],
-                                           self.config["encoder_output_size"],
                                            self.config,
                                            device = self.device
                                            )
