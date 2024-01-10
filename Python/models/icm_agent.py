@@ -15,7 +15,7 @@ from utils.utils import conv_output_shape
 import traceback
 
 class ICMAgent(nn.Module):
-    def __init__(self, input_shape, config, device = None) -> None:
+    def __init__(self, config, device = None) -> None:
         super(ICMAgent, self).__init__()
         # drqn agent part
         self.config = config
@@ -35,7 +35,7 @@ class ICMAgent(nn.Module):
         self.input_shape = self.final_flat+self.n_agents
 
 
-        if self.config["useNoisy"]:
+        if self.config["action_selector"] == "noisy":
             # self.fc1 = nn.Linear(self.input_shape , config["rnn_hidden_dim"])
             # self.fc2 = NoisyLinear(args.rnn_hidden_dim, args.n_actions)]
 

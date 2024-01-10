@@ -12,19 +12,10 @@ class QMixer(nn.Module):
         self.config = config
         self.n_agents = config["num_agents"]
 
-        if config["encoder"]:
-            # self.state_dim = int(np.prod(config["encoder_output_size"]*self.n_agents))
-            # self.state_dim = 0
+        # State dim include available actions, so add the above again:
+        self.state_dim=self.n_agents*config["n_actions"]
 
-            # State dim include available actions, so add the above again:
-            self.state_dim=self.n_agents*config["n_actions"]
-
-            self.state_dim+=config["state_shape"]
-                
-
-        else:
-            self.state_dim = int(np.prod(config.state_shape))
-        
+        self.state_dim+=config["state_shape"]
 
         self.embed_dim = config["mixing_embed_dim"]
 

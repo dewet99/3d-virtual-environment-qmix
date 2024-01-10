@@ -7,12 +7,11 @@ from torch.nn import init
 
 class NatureVisualEncoder(nn.Module):
     def __init__(
-        self, height: int, width: int, initial_channels: int, output_size: int, config = None, device = "cuda:0"
+        self, height: int, width: int, initial_channels: int,config = None, device = "cuda:0"
     ):
         super().__init__()
         self.config = config
         self.is_pretraining = False
-        self.encoder_output_size = output_size
         conv_1_hw = conv_output_shape((height, width), 8, 4)
         conv_2_hw = conv_output_shape(conv_1_hw, 4, 2)
         conv_3_hw = conv_output_shape(conv_2_hw, 3, 1)
@@ -21,7 +20,6 @@ class NatureVisualEncoder(nn.Module):
         self.height = height
         self.width = width
         self.initial_channels = initial_channels
-        self.output_size = output_size
         self.device = device
 
 
@@ -38,15 +36,6 @@ class NatureVisualEncoder(nn.Module):
             nn.Flatten(),
         )
         self.conv_layers.to(self.device)
-
-        # self.dense = nn.Sequential(
-        #     nn.Flatten(),
-        #     nn.Linear(self.final_flat, self.encoder_output_size),
-        #     nn.ReLU(),
-        #     nn.Linear(self.encoder_output_size, self.encoder_output_size),
-        #     nn.Tanh()
-        # )
-
 
         for m in self.modules():
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):

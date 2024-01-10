@@ -12,16 +12,16 @@ class CustomMAC():
         super().__init__()
         self.n_agents = config["num_agents"]
         self.config = config
-        input_shape = self._get_input_shape()
+        # input_shape = self._get_input_shape()
         self.device = device
-        self._build_agents(input_shape)
+        self._build_agents()
         self.agent_output_type = config["agent_output_type"]
 
         self.encoder = encoder
         
-        if not self.config["useNoisy"]:
+        if self.config["action_selector"] == "epsilon_greedy":
             self.action_selector = EpsilonGreedyActionSelector(config)
-        else:
+        elif self.config["action_selector"] == "noisy":
             self.action_selector = DiscreteNoisyGreedyActionSelector(config)
 
         self.hidden_states = None
@@ -132,18 +132,17 @@ class CustomMAC():
     def load_models(self, path):
         self.agent.load_state_dict(th.load("{}/agent.th".format(path), map_location=lambda storage, loc: storage))
 
-    def _build_agents(self, input_shape):
+    def _build_agents(self):
+        self.agent = ICMAgent(self.config, self.device).to(self.device)
 
-        self.agent = ICMAgent(input_shape, self.config, self.device).to(self.device)
-
-    def _get_input_shape(self):
-        # If there is an encoder, the input shape to the NN's is the output shape of the encoder
-        input_shape = self.config["encoder_output_size"]
+    # def _get_input_shape(self):
+    #     # If there is an encoder, the input shape to the NN's is the output shape of the encoder
+    #     input_shape = self.config["encoder_output_size"]
         
-        if self.config["obs_agent_id"]:
-            input_shape += self.n_agents
+    #     if self.config["obs_agent_id"]:
+    #         input_shape += self.n_agents
 
-        return input_shape
+    #     return input_shape
     
     def reset_agent_noise(self):
         self.agent.reset_noise()
