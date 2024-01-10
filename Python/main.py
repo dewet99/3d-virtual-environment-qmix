@@ -39,9 +39,6 @@ def main(args):
             remote_buffer = Remote_ReplayBuffer.remote(scheme, groups, config["buffer_size"], config["episode_limit"]+1, preprocess=preprocess, device="cpu")
         parameter_server = ParameterServer.remote(config)
 
-        # (self, scheme, groups, buffer_size, batch_size, max_seq_length, preprocess=None, device="cpu", data=None):
-
-
         learner = Learner.remote(config)
 
         # set remote objects
@@ -55,15 +52,13 @@ def main(args):
         ray.get(parameter_server.define_param_list.remote(param_list))
         ray.get(learner.update_parameter_server.remote())
 
-
         all_actors = workers + [learner]
-
-        # ray.wait([worker.run.remote(remote_buffer, parameter_server) for worker in workers])
-
 
         ray.wait([worker.run.remote() for worker in all_actors])       
 
-        ray.timeline(filename="timeline.json")
+        # For debugging purposes:
+        # ray.timeline(filename="timeline.json")
+        
         sys.exit(1)
     elif args[1] == "test":
         worker = TestExecutor(config, 0)
