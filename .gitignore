@@ -84,4 +84,5 @@ crashlytics-build.properties
 /venv_clean
 Assembly-CSharp.csproj
 
-**/__pycache__/
+**/**/__pycache__/
+
