@@ -3,7 +3,7 @@
 # --- Agent Parameters ---
 obs_agent_id: True
 rnn_hidden_dim: 64
-action_selector: "epsilon_greedy"
+action_selector: "noisy"
 epsilon_start: 1.0
 epsilon_finish: 0.05
 epsilon_anneal_time: 500000
@@ -15,7 +15,7 @@ worker_parameter_sync_frequency: 1 # How many parameter updates should occur bef
 use_per: True # use prioritized experience replay
 prioritized_buffer_alpha: 0.6
 per_eta: 0.9
-buffer_size: 1440 # this will be very heavily dependent on your available RAM
+buffer_size: 2400 # this will be very heavily dependent on your available RAM, as well as episode length limit
 
 # --- RL hyperparameters ---
 batch_size: 32 # number of episodes used to backprop and update networks
@@ -26,12 +26,11 @@ optim_alpha: 0.99 # RMSProp alpha
 optim_eps: 0.00001 # RMSProp epsilon
 grad_norm_clip: 20 # Reduce magnitude of gradients above this L2 norm
 
-
 #--- R2D2 Stuff ---
 # use_burnin implies that we will store hidden states
 use_burnin: True
 burn_in_step_count: 32 #number of steps to burn hidden state in
-value_fn_rescaling: True
+value_fn_rescaling: False
 
 #Ablation
 num_executors: 8 # capped at total_num_cpu_threads - 4
@@ -51,9 +50,8 @@ reward_clip_min: -5
 #--- Curiosity ---
 curiosity: False
 
-# update the target network every {} episodes
+# update the target network every {} training steps
 target_update_interval: 100
-num_training_steps_per_xp: 2
 
 # use the Q_Learner to train
 agent_output_type: "q"
@@ -65,7 +63,7 @@ hypernet_embed: 64
 
 # --- Environment Specific Options ---
 time_scale: 5
-executable_path: "./environment_executables/Ablation_Reduced_Act_Space/Ablation_Reduced_Act_Space.x86_64"
+executable_path: "./environment_executables/Appendix_Experiments/Appendix_Experiments.x86_64"
 num_agents: 2
 episode_limit: 300 # max number of steps in an episode
 grayscale: False
@@ -73,8 +71,6 @@ grayscale: False
 name: "experiment_1_ablation"
 
 # --- Encoder Options ---
-encoder: "nature"
-encoder_output_size: 256
 load_pretrained_model: False
 
 # --- Test ---

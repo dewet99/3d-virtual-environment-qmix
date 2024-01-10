@@ -15,7 +15,7 @@ worker_parameter_sync_frequency: 1 # How many parameter updates should occur bef
 use_per: True # use prioritized experience replay
 prioritized_buffer_alpha: 0.6
 per_eta: 0.9
-buffer_size: 1440 # this will be very heavily dependent on your available RAM
+buffer_size: 2400 # this will be very heavily dependent on your available RAM, as well as episode length limit
 
 # --- RL hyperparameters ---
 batch_size: 32 # number of episodes used to backprop and update networks
@@ -26,12 +26,11 @@ optim_alpha: 0.99 # RMSProp alpha
 optim_eps: 0.00001 # RMSProp epsilon
 grad_norm_clip: 20 # Reduce magnitude of gradients above this L2 norm
 
-
 #--- R2D2 Stuff ---
 # use_burnin implies that we will store hidden states
 use_burnin: True
 burn_in_step_count: 32 #number of steps to burn hidden state in
-value_fn_rescaling: True
+value_fn_rescaling: False
 
 #Ablation
 num_executors: 8 # capped at total_num_cpu_threads - 4
@@ -53,7 +52,6 @@ curiosity: False
 
 # update the target network every {} episodes
 target_update_interval: 100
-num_training_steps_per_xp: 2
 
 # use the Q_Learner to train
 agent_output_type: "q"
@@ -73,9 +71,8 @@ grayscale: False
 name: "experiment_1_ablation"
 
 # --- Encoder Options ---
-encoder: "nature"
-encoder_output_size: 256
 load_pretrained_model: False
+encoder_output_size: 256
 
 # --- Test ---
 save_obs_for_debug: False

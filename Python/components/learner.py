@@ -97,7 +97,7 @@ class Learner(object):
 
         # Target Networks:
         # a little wasteful to deepcopy (e.g. duplicates action selector), but should work for any MAC (this is what the pymarl dudes said, bless their innocent hearts)
-        self.target_mac = deepcopy(self.mac)
+        self.target_mac = CustomMAC(self.config, encoder=deepcopy(self.encoder))
 
         self.target_mixer = deepcopy(self.mixer)
 
@@ -108,8 +108,6 @@ class Learner(object):
         self.cuda()
 
         self.debug=0
-
-        
 
         # Logger Stuff
         self.training_start_time = time.time()
