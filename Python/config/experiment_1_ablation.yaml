@@ -70,9 +70,6 @@ grayscale: False
 
 name: "experiment_1_ablation"
 
-# --- Encoder Options ---
-load_pretrained_model: False
-
 # --- Test ---
 save_obs_for_debug: False
 test_executable_path: "./environment_executables/experiment_5_visible/experiment_5_visible.x86_64"

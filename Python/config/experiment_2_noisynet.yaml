@@ -68,10 +68,8 @@ num_agents: 2
 episode_limit: 300 # max number of steps in an episode
 grayscale: False
 
-name: "experiment_1_ablation"
+name: "experiment_2_noisynet"
 
-# --- Encoder Options ---
-load_pretrained_model: False
 
 # --- Test ---
 save_obs_for_debug: False
