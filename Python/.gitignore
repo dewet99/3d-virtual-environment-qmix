@@ -4,3 +4,6 @@ timeline.json
 /csv
 /encoder_weights
 /eval_results
+GenerateGraphsFromCSV.ipynb
+Training_encoder.ipynb
+requirements.txt
