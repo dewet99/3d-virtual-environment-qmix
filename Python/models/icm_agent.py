@@ -43,9 +43,9 @@ class ICMAgent(nn.Module):
             # self.fc2 = NoisyLinearTorch(config["rnn_hidden_dim"], config["n_actions"])
             # self.fc2 = NoisyLinear(config["rnn_hidden_dim"], config["n_actions"], sigma_init=0.2)
             self.fc2 = nn.Sequential(
-                NoisyLinear(config["rnn_hidden_dim"], config["rnn_hidden_dim"], sigma_init=0.017),
+                NoisyLinear(config["rnn_hidden_dim"], config["rnn_hidden_dim"], sigma_init=0.017, device=self.device),
                 nn.ReLU(),
-                NoisyLinear(config["rnn_hidden_dim"], config["n_actions"], sigma_init=0.017)
+                NoisyLinear(config["rnn_hidden_dim"], config["n_actions"], sigma_init=0.017, device=self.device)
             )
         else:
             # Working

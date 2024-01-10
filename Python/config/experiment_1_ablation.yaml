@@ -72,7 +72,6 @@ name: "experiment_1_ablation"
 
 # --- Encoder Options ---
 load_pretrained_model: False
-encoder_output_size: 256
 
 # --- Test ---
 save_obs_for_debug: False
