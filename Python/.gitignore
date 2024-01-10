@@ -2,3 +2,5 @@
 timeline.json
 /figs
 /csv
+/encoder_weights
+/eval_results
