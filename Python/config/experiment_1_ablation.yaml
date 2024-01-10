@@ -63,7 +63,7 @@ hypernet_embed: 64
 
 # --- Environment Specific Options ---
 time_scale: 5
-executable_path: "./environment_executables/Ablation_Reduced_Act_Space/Ablation_Reduced_Act_Space.x86_64"
+executable_path: "./environment_executables/experiment_1_ablation/experiment_1_ablation.x86_64"
 num_agents: 2
 episode_limit: 300 # max number of steps in an episode
 grayscale: False
