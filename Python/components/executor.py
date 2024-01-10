@@ -1,20 +1,20 @@
 import ray
-import mlagents
+
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.engine_configuration_channel import (EngineConfigurationChannel,)
 from wrappers.UnityParallelEnvWrapper_Torch import UnityWrapper
 from mlagents_envs.base_env import ActionTuple
-import pdb
+
 from collections import deque
 import numpy as np
-import gc
+
 from functools import partial
-from utils.unity_utils import get_worker_id
+
 import torch
 from controllers.custom_controller import CustomMAC
-from models.ICMModel_2 import ICMModel
+
 from components.replay_buffer import EpisodeBatch
-from utils.utils import OneHot, RunningMeanStdTorch
+from utils.utils import OneHot
 import torch.nn.functional as F
 import torch.nn as nn 
 import time
@@ -22,9 +22,9 @@ import time
 import traceback
 import datetime
 import sys
-import subprocess
+
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim import Adam
+
 from models.NatureVisualEncoder import NatureVisualEncoder
 
 
@@ -48,6 +48,7 @@ class Executor(object):
         config_channel = EngineConfigurationChannel()
         config_channel.set_configuration_parameters(time_scale=self.time_scale)
 
+        # Close previously opened environments, justin case
         try:
             self.env.close()
             self.unity_env.close()
@@ -55,7 +56,6 @@ class Executor(object):
             print("No envs open")
 
         unity_env = UnityEnvironment(file_name=self.env_path, worker_id=worker_id, seed=np.int32(np.random.randint(0, 120)), side_channels=[config_channel])
-        # unity_env = UnityEnvironment(file_name='./unity/envs/Discrete_NoCur/Discrete_NoCur.x86_64', worker_id=get_worker_id())
         unity_env.reset()
 
         self.env = UnityWrapper(unity_env, episode_limit=self.episode_limit, config = self.config)
@@ -67,11 +67,13 @@ class Executor(object):
 
 
     def collect_experience(self):
-        # print(f"Executor {self.worker_id} starting to collect experience")
+        """
+        Runs an episode and stores the collected information in the replay buffer
+        """
         self.reset()
         episode_start = time.time()
+
         try:
-            # global_steps = ray.get(self.parameter_server.return_environment_steps.remote())
             global_steps = ray.get(self.parameter_server.get_worker_steps_by_id.remote(self.worker_id))
         except Exception as e:
             print(e)
@@ -82,16 +84,11 @@ class Executor(object):
         raw_observations = 0
 
         reward_episode = []
-        intrinsic_reward = None
         try:
             while not terminated:
-
+                # Convert the observations to uint8 to reduce the RAM requirements, this allows you to set a significantly larger replay size than with float32
                 raw_observations = np.uint8(self.env._get_observations()*255)
-                # print(self.batch["obs"])
 
-                # state is determined from raw obs after feature extraction
-                # normalise the obs before you save them to the replay buffer
-                # if self.config["contains_state"]:
                 state = self.env._get_global_state_variables()
 
                 pre_transition_data = {
@@ -102,62 +99,33 @@ class Executor(object):
                 
                 try:
                     if self.config["use_burnin"]:
-                        # store the hidden state in the replay buffer so that we can use them during training to init hidden
-
+                        # store the hidden state in the replay buffer so that we can use it during training to init hidden
                         h_s = self.mac.hidden_states.detach()
-
                         hidden_state = {"hidden_state": h_s.unsqueeze(0)}
                         pre_transition_data.update(hidden_state)
                 except Exception as e:
                     traceback.print_exc()
-                
-                    
-                    
-
-
-                # else:
-                #     pre_transition_data = {
-                #         "avail_actions": self.env.get_avail_actions(),
-                #         "obs": raw_observations
-                #     }
 
                 self.batch.update(pre_transition_data, ts=self.t)
 
 
-                # Pass the entire batch of experiences up till now to the 
-                # Receive the actions for each agent at this timestep in a batch of size 1
-                # This will change depending on whether I'm using a feature extraction network or not
+                # Pass the entire batch of experiences up till now to the mac to select actions
                 with torch.no_grad():
                     actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=global_steps, test_mode=False)
                     reward, terminated, env_info = self.env.step(actions[0])
 
-                
-
                 reward_episode.append(reward)
-
 
                 episode_return += reward
 
 
                 post_transition_data = {
                     "actions": actions,
-                    # "reward": [(reward,)],
+                    "reward": [(reward,)],
                     "terminated": [(terminated != env_info.get("episode_limit", False),)],
-                    # terminated above says whether the agent terminated because they reached the end
-                    # of the episode
                 }
 
                 self.batch.update(post_transition_data, ts=self.t)
-
-                reward_data = {
-                    # "actions": actions,
-                        "reward": [(reward,)],
-                    # "terminated": [(terminated != env_info.get("episode_limit", False),)],
-                    # terminated above says whether the agent terminated because they reached the end
-                    # of the episode
-                    }
-                
-                self.batch.update(reward_data, ts=self.t)
 
                 self.t += 1
 
@@ -183,63 +151,42 @@ class Executor(object):
             # Increment global episode count
             self.parameter_server.increment_total_episode_count.remote()
 
-
+            # Accumulate reward stats in parameter server
             self.parameter_server.accumulate_stats.remote(sum(reward_episode), time.time() - episode_start, self.t)
             self.parameter_server.accumulate_worker_steps_by_id.remote(self.worker_id, self.t)
 
-
-            # print(f"Executor {self.worker_id} took {time.time() - episode_start} seconds to complete an episode")
-
             return self.batch
+        
         except Exception as e:
             traceback.print_exc()
     
 
     def run(self):
         try:
+            # Sleep for a few seconds to give everything time to be initialised
             time.sleep(3)
-            pupdates = 0
-            while pupdates<self.config["t_max"]+5:
+            param_updates = 0
 
-                # Sample every 5 parameter updates:
-                pupdates = ray.get(self.parameter_server.get_parameter_update_steps.remote())
-                if pupdates % self.config["worker_parameter_sync_frequency"] == 0:
+            # add parameter sync frequency otherwise there will be one less logging point than we want. Or something. Don't overthink it.
+            while param_updates<self.config["t_max"] + self.config["worker_parameter_sync_frequency"]:
+                param_updates = ray.get(self.parameter_server.get_parameter_update_steps.remote())
+
+                if param_updates % self.config["worker_parameter_sync_frequency"] == 0:
                     # These two can be the same function but I leave as is for now
                     self.sync_with_parameter_server()
                     self.sync_with_param_server_encoder()
-
-
-                # if pupdates % self.config["log_every"] == 0 and pupdates>0 and self.config["log_histograms"]:
-                #     for key, value in self.mac.named_parameters():
-                #         self.histograms_writer.add_histogram(f"Executor_Histograms/{key}", value, ray.get(self.parameter_server.return_environment_steps.remote()))
-
-
-                #     # print(f"Worker {self.worker_id} is synced with parameter server")
-
-                # print(f" Worker {self.worker_id} will now start to collect one experience")
-
-                # sync the executor's encoder parameters with the parameter server's encoder paramts:
-                # self.sync_with_param_server_encoder()
-
-                
                 
                 episode_batch = self.collect_experience()
 
                 if self.config["save_obs_for_debug"]:
+                    # Saves the observations of a single episode if you want to load it into a notebook and see what the agents see
                     np.save("epbatch_obs", episode_batch["obs"])
                     self.config["save_obs_for_debug"] = False
 
-                # print(f" Worker {self.worker_id} collected one experience")
-
-                # Trying to use shared memory
-                # episode_batch_reference = ray.put(episode_batch)
-                # print("Attempt episode insert")
-                # blocking call, task has to complete before I can continue
-                # ray.get(self.remote_buffer.insert_episode_batch.remote(episode_batch))
                 self.remote_buffer.insert_episode_batch.remote(episode_batch)
 
-                # print("Episode intertsed")
             sys.exit(1)
+
         except Exception as e:
             traceback.print_exc()
 
@@ -253,11 +200,6 @@ class Executor(object):
         self.batch = self.new_batch()
         self.env.reset()
         self.t = 0
-        self.icm_reward = 0
-        self.li = 0
-        self.lf = 0
-        self.L_I = 0
-        self.L_F = 0
     
     def setup(self):
         scheme, groups, preprocess = self.generate_scheme()
@@ -271,17 +213,7 @@ class Executor(object):
     
         self.mac = CustomMAC(self.config, encoder = self.encoder, device = self.device)
 
-        # if self.config["use_transfer"]:
-        #     self.encoder.load_state_dict(torch.load(self.config["models_2_transfer_path"] + "/encoder.th"))
-        #     self.mac.load_models(self.config["models_2_transfer_path"])
-
-        #     self.encoder.to(self.device)
-        #     self.mac.agent.to(self.device)
-
-        # if not self.config["use_per"]:
         self.new_batch = partial(EpisodeBatch, scheme, groups, self.config["batch_size_run"], self.config["episode_limit"]+1, preprocess = preprocess, device = "cpu")
-        # else:
-        #     self.new_batch = partial(PER_EpisodeBatch, scheme, groups, self.config["batch_size_run"], self.config["episode_limit"]+1, preprocess = preprocess, device = "cpu")
 
     def get_env_info(self):
         self.config["obs_shape"] = self.env.obs_shape
@@ -289,9 +221,7 @@ class Executor(object):
         self.config["n_actions"] = self.env_info["n_actions"]
 
     def setup_logger(self):
-        # print(self.config["load_models_from"])
-        self.log_dir = "results/" + datetime.datetime.now().strftime("%d_%m_%H_%M")
-        self.histograms_writer = SummaryWriter(log_dir= self.log_dir + "/histograms")
+        self.log_dir = "results/" + self.config["name"] +"_" + datetime.datetime.now().strftime("%d_%m_%H_%M")
 
     def close_env(self):
         self.env.close()
@@ -308,16 +238,9 @@ class Executor(object):
             "terminated": {"vshape": (1,), "dtype": torch.uint8},
             }
         
-        # if self.config["curiosity"]:
-        #     icm_reward = {"icm_reward": {"vshape": (1,)},}
-        #     scheme.update(icm_reward)
-
         if self.config["use_burnin"]:
             hidden_states = {"hidden_state": {"vshape": (1, 2,self.config["rnn_hidden_dim"]), "dtype": torch.float32}}
             scheme.update(hidden_states)
-
-        # if self.config["useNoisy"]:
-        #     raise NotImplementedError
         
         groups = {
         "agents": self.config["num_agents"]
@@ -336,38 +259,20 @@ class Executor(object):
         # receive the stored parameters from the server using ray.get()
 
         new_params = ray.get(self.parameter_server.return_params.remote())
-        # print(f"New params typee: {type(new_params)}")
-        # print(new_params)
 
         for param_name, param_val in self.mac.named_parameters():
             if param_name in new_params:
                 param_data = torch.tensor(ray.get(new_params[param_name])).to(self.device)
                 param_val.data.copy_(param_data)
-        
-        # copy the received neural network weights to its own
-
 
 
     def sync_with_param_server_encoder(self):
         new_params = ray.get(self.parameter_server.return_encoder_params.remote())
-        # print(f"New params typee: {type(new_params)}")
-        # print(new_params)
 
         for param_name, param_val in self.encoder.named_parameters():
             if param_name in new_params:
                 param_data = torch.tensor(ray.get(new_params[param_name])).to(self.device)
                 param_val.data.copy_(param_data)
-
-    def sync_with_param_server_ICM_encoder(self):
-        new_params = ray.get(self.parameter_server.return_ICM_encoder_params.remote())
-        # print(f"New params typee: {type(new_params)}")
-        # print(new_params)
-
-        for param_name, param_val in self.icm.icm_encoder.named_parameters():
-            if param_name in new_params:
-                param_data = torch.tensor(ray.get(new_params[param_name])).to(self.device)
-                param_val.data.copy_(param_data)
-
 
 
 
