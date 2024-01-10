@@ -268,12 +268,7 @@ class Executor(object):
                                            self.config,
                                            device = self.device
                                            )
-        # .cuda()
-        
-        if self.config["load_pretrained_model"]:
-            self.encoder.load_state_dict(torch.load("./encoder_weights/encoder_NEW.pth"))
-
-        
+    
         self.mac = CustomMAC(self.config, encoder = self.encoder, device = self.device)
 
         # if self.config["use_transfer"]:
