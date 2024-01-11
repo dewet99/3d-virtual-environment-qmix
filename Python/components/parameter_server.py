@@ -28,7 +28,6 @@ class ParameterServer(object):
         self.ep_length = 0
 
         self.log_dir = "results/" + datetime.datetime.now().strftime("%d_%m_%H_%M")
-        self.histograms_writer = SummaryWriter(log_dir= self.log_dir + "/histograms")
 
 
         self.reset_accumulated_rewards()
@@ -80,26 +79,7 @@ class ParameterServer(object):
     def accumulate_worker_steps_by_id(self, worker_id, steps_to_accumulate):
         self.worker_schedule_tracker[f"worker_{worker_id}"]+=steps_to_accumulate
 
-    def log_parameter_server_params(self):
 
-        for key, value in self.params.items():
-            try:
-                self.histograms_writer.add_histogram(f"Histograms/{key}", ray.get(value), self.environment_steps)
-            except:
-                print(f"Couldn't log a histogram for {key}")
-
-        for key, value in self.encoder_params.items():
-            try:
-                self.histograms_writer.add_histogram(f"EncoderHistograms/{key}", ray.get(value), self.environment_steps)
-            except:
-                print(f"Couldn't log a histogram for {key}")
-
-    def log_executor_histogram_params(self, histos):
-        for key, value in histos.items():
-            try:
-                self.histograms_writer.add_histogram(f"ExecutorHistograms/{key}", ray.get(value), self.environment_steps)
-            except:
-                print(f"Couldn't log a histogram for {key}")
 
 
     def update_params(self, state_dicts_to_save):
