@@ -46,7 +46,10 @@ The main features we implemented are as follows. These features aren't particula
     ```bash
     pip install -r requirements.txt
     ```
-
+4. Install the required version of torch. There are some version incompatibilities between mlagents and torch, but mlagents==-0.28.0 and torch==1.13.1 works for me.
+5. ```bash
+    pip install torch==1.13.1
+   ```
 4. That should be it.
 
 ## Usage
