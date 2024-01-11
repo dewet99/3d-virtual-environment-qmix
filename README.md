@@ -24,6 +24,7 @@ The main features we implemented are as follows. These features aren't particula
 - Prioritised experience replay
 - Reward standardisation
 - Noisy neural networks for exploration
+- Curiosity
 - Curriculum/transfer learning to a) train agents in progressively more difficult problems and b) to transfer trained agents to tasks with related goals but slightly tweaked mechanics.
 
 ## Requirements
@@ -93,8 +94,38 @@ You control an agent as follows:
 - right-click: place portal B, in the environments which has this functionality enabled (experiments 4 and 5)
 
 ## Experiments and Results
-We performed five experiments to verify the algorithm's performance. We started out with an ablation study to verify the contribution of each of the implemented components mentioned in [features](#features) towards the algorithm's performance.
+We performed five experiments to verify the algorithm's performance. We started out with an ablation study to verify the contribution of each of the implemented components mentioned in [features](#features) towards the algorithm's performance. 
 
-### Ablation Study Results
+**Important Note: I do not present my findings and conclusions here, only the results.**
+
+### Experiment 1: Ablation Study Results
+**Environment used: experiment_1_ablation**
+
 The training curves for the ablation study is shown below. Initially, noisynet did not work at all and was thus not included in the ablation study. However, we managed to fix it and we performed a separate experiment with it.
 ![Ablation Study Reward Curves](figures/ablation_reward.png)
+
+### Experiment 2: Exploration Strategies
+**Environment used: experiment_1_ablation**
+We used the same environment as in the previous experiment, with all features enabled. We compared the performance of NoisyNet to Epsilon Greedy. We have four different experiments.
+- SRU: Sequential Random Updates
+- BRU: Bootstrapped Random Updates
+Read the DRQN paper to understand the difference.
+
+![NoisyNet vs e-Greedy](figures/SRUBRU_rewards.png)
+
+In the future, I'd like to see whether NoisyNet can outperform e-greedy on the next experiment, where transfer learning was necessary for the agents to solve the problem.
+
+### Experiment 3: Sparse Rewards
+We tried four different approaches to solving a sparse reward problem:
+- The best performing algorithm from experiment 1.
+- The above, with a curiosity module
+- Transferring the trained models from experiment 1 to this environment.
+- Transferring the trained models from experiment 1 to this environment, coupled with a curiosity module.
+
+The results are as follows:
+![Sparse Rewards](figures/transfer_rewards.png)
+
+### Experiment 4: Curriculum Learning with the Full Action Space
+Experiments 1 through three had a reduced action space, where the agents couldn't place portals. In this experiment, they can place portals and need to use them to solve the problem.
+
+
