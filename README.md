@@ -5,11 +5,13 @@ The work represented here was done for my MEng thesis. It consists of an environ
 
 - [Introduction](#introduction)
 - [Features](#features)
-- [Environments](#environments)
+- [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+- [Environments](#environments)
+- [Experiments and Results](#experiments-and-results)
+- [Final Important Note](#final-note)
+- [References](#references)
 
 ## Introduction
 This project implements the QMIX Multi Agent Reinforcement Learning algorithm in a 3D virtual environment. The algorithm is augmented with a number of features to improve its performance in the 3D environment.
@@ -116,6 +118,8 @@ Read the DRQN paper to understand the difference.
 In the future, I'd like to see whether NoisyNet can outperform e-greedy on the next experiment, where transfer learning was necessary for the agents to solve the problem.
 
 ### Experiment 3: Sparse Rewards
+**Environment used: experiment_3_sparse_rewards**
+
 We tried four different approaches to solving a sparse reward problem:
 - The best performing algorithm from experiment 1.
 - The above, with a curiosity module
@@ -126,6 +130,34 @@ The results are as follows:
 ![Sparse Rewards](figures/transfer_rewards.png)
 
 ### Experiment 4: Curriculum Learning with the Full Action Space
-Experiments 1 through three had a reduced action space, where the agents couldn't place portals. In this experiment, they can place portals and need to use them to solve the problem.
+Experiments 1 through three had a reduced action space, where the agents couldn't place portals. In this experiment, they can place portals and need to use them to solve the problem. We use curriculum learning, and therefore two environments. We first train them in the environment but reduce the goal to "one agent needs to place two portals", call this **Curriculum A**. Then, we train them in the full problem, where they both need to place two portals and navigate to a target zone, called **Curriculum B**.
 
+#### Curriculum A
+**Environment used: experiment_4_full_action_space_pre_train**
+![Pre-train](figures/full_act_init_rewards.png)
+We train them for a short while, until the agents learn to somewhat placed portals. Then, we take those trained models and place them into the next environment.
+
+#### Curriculum B
+**Environment used: experiment_4_full_action_space**
+![Full-train](figures/full_act_rewards.png)
+Again, we compare the base algorithm with the algorithm that uses curriculum learning, or transfer learning.
+
+### Experiment 5: Cooperation and Transfer Learning
+Finally, we change the environment dynamics, so that the problem goal is the same, but the mechanics of achieving the goal is different. We then transfer the agents from Experiment 4 and see whether they can solve the problem. We again compare it with the base algorithm.
+![Cooperation](figures/exp_5_full_rewards.png)
+![Cooperation2](figures/exp_5_rewards.png)
+
+## Final Note:
+Explanations of hyperparameters, reward functions and pretty much everything you could ask are available in my thesis, which I might include in this repo at a later date.
+
+## References
+The references for the main papers I used are below. I also used code from various repositories, and can't remember them all. If you find anything that should be references, let me know and I'll happily add it below.
+
+- DRQN: [https://arxiv.org/abs/1507.06527](https://arxiv.org/abs/1507.06527)
+- R2D2: [https://openreview.net/pdf?id=r1lyTjAqYX](https://openreview.net/pdf?id=r1lyTjAqYX)
+- QMIX: [https://arxiv.org/abs/1803.11485](https://arxiv.org/abs/1803.11485)
+- RAINBOW: [https://arxiv.org/abs/1710.02298](https://arxiv.org/abs/1710.02298)
+- Curiosity: [https://arxiv.org/abs/1705.05363](https://arxiv.org/abs/1705.05363)
+- NoisyNet: [https://arxiv.org/abs/1706.10295](https://arxiv.org/abs/1706.10295)
+- Prioritised experience replay: [https://arxiv.org/abs/1511.05952](https://arxiv.org/abs/1511.05952)
 
