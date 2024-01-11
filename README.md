@@ -42,14 +42,12 @@ The main features we implemented are as follows. These features aren't particula
 
 2. Make a Python virtual environment. If you don't know how, you probably should figure that out first.
 
-3. Install Unity MLAgents Python package. Follow the installation instruction at their website: [Link](https://github.com/Unity-Technologies/ml-agents/blob/develop/docs/Installation.md#:~:text=package%20documentation.-,Install%20the%20mlagents%20Python%20package,-Installing%20the%20mlagents)
-
-4. Install everything in requirements.txt
+3. Install everything in requirements.txt
     ```bash
     pip install -r requirements.txt
     ```
 
-5. That should be it.
+4. That should be it.
 
 ## Usage
 You can run an experiment by opening a terminal window in the Python folder and typing the following command:
