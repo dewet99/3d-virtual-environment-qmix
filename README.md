@@ -97,4 +97,4 @@ We performed five experiments to verify the algorithm's performance. We started 
 
 ### Ablation Study Results
 The training curves for the ablation study is shown below. Initially, noisynet did not work at all and was thus not included in the ablation study. However, we managed to fix it and we performed a separate experiment with it.
-![Ablation Study Reward Curves](figures/ablation_reward.pdf)
+![Ablation Study Reward Curves](figures/ablation_reward.png)
