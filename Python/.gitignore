@@ -6,4 +6,3 @@ timeline.json
 /eval_results
 GenerateGraphsFromCSV.ipynb
 Training_encoder.ipynb
-requirements.txt
