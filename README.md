@@ -96,7 +96,7 @@ You control an agent as follows:
 - right-click: place portal B, in the environments which has this functionality enabled (experiments 4 and 5)
 
 ## Experiments and Results
-We performed five experiments to verify the algorithm's performance. We started out with an ablation study to verify the contribution of each of the implemented components mentioned in [features](#features) towards the algorithm's performance. 
+We performed five experiments to verify the algorithm's performance. We started out with an ablation study to verify the contribution of each of the implemented components mentioned in [features](#features) towards the algorithm's performance. We also include a video of the agents fully trained in each experiment.
 
 **Important Note: I do not present my findings and conclusions here, only the results.**
 
@@ -105,6 +105,7 @@ We performed five experiments to verify the algorithm's performance. We started 
 
 The training curves for the ablation study is shown below. Initially, noisynet did not work at all and was thus not included in the ablation study. However, we managed to fix it and we performed a separate experiment with it.
 ![Ablation Study Reward Curves](figures/ablation_reward.png)
+Link: [https://youtu.be/Hv8gBbJ-S9U](https://youtu.be/Hv8gBbJ-S9U)
 
 ### Experiment 2: Exploration Strategies
 **Environment used: experiment_1_ablation**
@@ -128,24 +129,28 @@ We tried four different approaches to solving a sparse reward problem:
 
 The results are as follows:
 ![Sparse Rewards](figures/transfer_rewards.png)
+Link: [https://youtu.be/q_C1DRuNCJU](https://youtu.be/q_C1DRuNCJU)
 
 ### Experiment 4: Curriculum Learning with the Full Action Space
 Experiments 1 through three had a reduced action space, where the agents couldn't place portals. In this experiment, they can place portals and need to use them to solve the problem. We use curriculum learning, and therefore two environments. We first train them in the environment but reduce the goal to "one agent needs to place two portals", call this **Curriculum A**. Then, we train them in the full problem, where they both need to place two portals and navigate to a target zone, called **Curriculum B**.
 
 #### Curriculum A
 **Environment used: experiment_4_full_action_space_pre_train**
-![Pre-train](figures/full_act_init_rewards.png)
 We train them for a short while, until the agents learn to somewhat placed portals. Then, we take those trained models and place them into the next environment.
+![Pre-train](figures/full_act_init_rewards.png)
+Link: [https://youtu.be/gn-xrrF2kBI](https://youtu.be/gn-xrrF2kBI)
 
 #### Curriculum B
 **Environment used: experiment_4_full_action_space**
-![Full-train](figures/full_act_rewards.png)
 Again, we compare the base algorithm with the algorithm that uses curriculum learning, or transfer learning.
+![Full-train](figures/full_act_rewards.png)
+Link: [https://youtu.be/iXVBdkBzs_M](https://youtu.be/iXVBdkBzs_M)
 
 ### Experiment 5: Cooperation and Transfer Learning
 Finally, we change the environment dynamics, so that the problem goal is the same, but the mechanics of achieving the goal is different. We then transfer the agents from Experiment 4 and see whether they can solve the problem. We again compare it with the base algorithm.
 ![Cooperation](figures/exp_5_full_rewards.png)
 ![Cooperation2](figures/exp_5_rewards.png)
+Link: [https://youtu.be/3uNIQMH3l8s](https://youtu.be/3uNIQMH3l8s)
 
 ## Final Note:
 Explanations of hyperparameters, reward functions and pretty much everything you could ask are available in my thesis, which I might include in this repo at a later date.
