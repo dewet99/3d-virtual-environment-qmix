@@ -94,3 +94,7 @@ You control an agent as follows:
 
 ## Experiments and Results
 We performed five experiments to verify the algorithm's performance. We started out with an ablation study to verify the contribution of each of the implemented components mentioned in [features](#features) towards the algorithm's performance.
+
+### Ablation Study Results
+The training curves for the ablation study is shown below. Initially, noisynet did not work at all and was thus not included in the ablation study. However, we managed to fix it and we performed a separate experiment with it.
+![Ablation Study Reward Curves](figures/ablation_reward.pdf)
