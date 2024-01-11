@@ -50,7 +50,6 @@ tensorboard==2.11.2
 tensorboard-data-server==0.6.1
 tensorboard-plugin-wit==1.8.1
 tensordict==0.2.1
-torch==1.13.1
 torchrl==0.0.5
 triton==2.1.0
 typing_extensions==4.4.0
